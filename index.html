@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farmers Sales Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep: #0b1628;
+      --bg-card: #142038;
+      --bg-card-hover: #1a2a48;
+      --gold: #f0a500;
+      --gold-light: #ffc947;
+      --gold-dim: #c48800;
+      --text-primary: #e8ecf4;
+      --text-secondary: #8a9bb8;
+      --accent-blue: #1e3a5f;
+      --danger: #e84545;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Source Sans 3', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(30, 58, 95, 0.5) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(240, 165, 0, 0.05) 0%, transparent 50%);
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 680px;
+    }
+
+    /* Config Toggle Button */
+    .config-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-blue);
+      color: var(--text-secondary);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 20px;
+    }
+    .config-toggle:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      transform: scale(1.08);
+    }
+
+    /* Config Panel */
+    .config-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .config-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .config-panel {
+      position: fixed;
+      top: 0;
+      right: -420px;
+      width: 400px;
+      max-width: 90vw;
+      height: 100vh;
+      background: var(--bg-deep);
+      border-left: 1px solid var(--accent-blue);
+      z-index: 300;
+      transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      padding: 28px 24px;
+    }
+    .config-panel.open {
+      right: 0;
+    }
+
+    .config-panel h2 {
+      font-family: 'Oswald', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 18px;
+      color: var(--gold);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .config-panel h2 button {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .config-panel h2 button:hover { color: var(--text-primary); }
+
+    .config-section {
+      margin-bottom: 24px;
+    }
+    .config-section h3 {
+      font-family: 'Oswald', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--accent-blue);
+      padding-bottom: 6px;
+    }
+
+    .config-section .goal-input-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .config-section .goal-input-group label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .config-section input[type="number"],
+    .config-section input[type="date"] {
+      background: var(--bg-card);
+      border: 1px solid var(--accent-blue);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 14px;
+      width: 100%;
+    }
+    .config-section input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 16px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-secondary);
+      user-select: none;
+    }
+    .checkbox-item:hover { color: var(--text-primary); }
+    .checkbox-item input[type="checkbox"] {
+      accent-color: var(--gold);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .select-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .select-actions button {
+      background: none;
+      border: none;
+      color: var(--gold-dim);
+      font-size: 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-weight: 600;
+    }
+    .select-actions button:hover { color: var(--gold); }
+
+    .config-apply {
+      width: 100%;
+      padding: 14px;
+      background: var(--gold);
+      color: var(--bg-deep);
+      border: none;
+      border-radius: 8px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    .config-apply:hover {
+      background: var(--gold-light);
+    }
+
+    /* Dashboard Card */
+    .dashboard {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow:
+        0 4px 24px rgba(0,0,0,0.4),
+        0 0 80px rgba(240, 165, 0, 0.03);
+      animation: fadeInUp 0.6s ease-out;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dashboard-top {
+      padding: 32px 32px 24px;
+      position: relative;
+    }
+
+    .title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .subtitle {
+      font-family: 'Oswald', sans-serif;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .remaining-amount {
+      font-family: 'Oswald', sans-serif;
+      font-size: 72px;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .sold-info {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .sold-info span {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* Percentage Circle */
+    .pct-circle {
+      position: absolute;
+      top: 32px;
+      right: 32px;
+      width: 72px;
+      height: 72px;
+    }
+    .pct-circle svg {
+      width: 72px;
+      height: 72px;
+      transform: rotate(-90deg);
+    }
+    .pct-circle .track {
+      fill: none;
+      stroke: var(--accent-blue);
+      stroke-width: 5;
+    }
+    .pct-circle .fill {
+      fill: none;
+      stroke: var(--gold);
+      stroke-width: 5;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease-out;
+    }
+    .pct-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Oswald', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    /* Deadline Bar */
+    .deadline-bar {
+      background: var(--bg-deep);
+      margin: 0 24px;
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .deadline-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cal-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent-blue);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .deadline-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-secondary);
+    }
+    .deadline-date {
+      font-family: 'Oswald', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .days-left {
+      text-align: right;
+    }
+    .days-left .num {
+      font-family: 'Oswald', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .days-left .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-secondary);
+    }
+
+    /* Progress Bar */
+    .progress-section {
+      padding: 20px 24px 8px;
+    }
+    .progress-track {
+      height: 10px;
+      background: var(--bg-deep);
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 5px;
+      background: linear-gradient(90deg, var(--gold) 0%, #ff8c00 60%, var(--danger) 100%);
+      transition: width 1s ease-out;
+      position: relative;
+    }
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 16px;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+      border-radius: 0 5px 5px 0;
+    }
+
+    /* Stats Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      padding: 20px 24px 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-deep);
+      border-radius: 10px;
+      padding: 18px 16px;
+      text-align: center;
+      border: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .stat-value {
+      font-family: 'Oswald', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.1;
+    }
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* File input area */
+    .file-area {
+      text-align: center;
+      padding: 16px 24px 0;
+    }
+    .file-area label {
+      display: inline-block;
+      padding: 8px 20px;
+      background: var(--accent-blue);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Source Sans 3', sans-serif;
+    }
+    .file-area label:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+    .file-area input { position: absolute; width: 0; height: 0; opacity: 0; overflow: hidden; }
+    .file-name {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+
+    /* Responsive */
+    @media (max-width: 500px) {
+      .remaining-amount { font-size: 48px; }
+      .dashboard-top { padding: 24px 20px 18px; }
+      .stats-row { padding: 16px 16px 20px; gap: 8px; }
+      .stat-value { font-size: 22px; }
+      .deadline-bar { margin: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Config Toggle -->
+  <button class="config-toggle" onclick="toggleConfig()" title="Settings">&#9881;</button>
+
+  <!-- Config Overlay -->
+  <div class="config-overlay" onclick="toggleConfig()"></div>
+
+  <!-- Config Panel -->
+  <div class="config-panel" id="configPanel">
+    <h2>
+      Filters &amp; Settings
+      <button onclick="toggleConfig()">&times;</button>
+    </h2>
+
+    <div class="config-section">
+      <h3>Goal &amp; Deadline</h3>
+      <div class="goal-input-group">
+        <label>Goal $</label>
+        <input type="number" id="goalInput" value="78000" step="1000">
+      </div>
+      <div class="goal-input-group" style="margin-top:8px">
+        <label>Deadline</label>
+        <input type="date" id="deadlineInput" value="2026-03-18">
+      </div>
+      <div class="goal-input-group" style="margin-top:8px">
+        <label>Title</label>
+        <input type="text" id="titleInput" value="March Race to the Finish" style="background:var(--bg-card);border:1px solid var(--accent-blue);color:var(--text-primary);padding:8px 12px;border-radius:8px;font-family:'Source Sans 3',sans-serif;font-size:14px;width:100%;">
+      </div>
+    </div>
+
+    <div class="config-section" id="carrierSection">
+      <h3>Carriers</h3>
+      <div class="select-actions">
+        <button onclick="selectAll('carrier')">Select All</button>
+        <button onclick="selectNone('carrier')">Clear All</button>
+      </div>
+      <div class="checkbox-grid" id="carrierCheckboxes"></div>
+    </div>
+
+    <div class="config-section" id="producerSection">
+      <h3>Producers</h3>
+      <div class="select-actions">
+        <button onclick="selectAll('producer')">Select All</button>
+        <button onclick="selectNone('producer')">Clear All</button>
+      </div>
+      <div class="checkbox-grid" id="producerCheckboxes"></div>
+    </div>
+
+    <div class="config-section" id="leadSourceSection">
+      <h3>Lead Source</h3>
+      <div class="select-actions">
+        <button onclick="selectAll('leadSource')">Select All</button>
+        <button onclick="selectNone('leadSource')">Clear All</button>
+      </div>
+      <div class="checkbox-grid" id="leadSourceCheckboxes"></div>
+    </div>
+
+    <div class="config-section" id="policyTypeSection">
+      <h3>Policy Type</h3>
+      <div class="select-actions">
+        <button onclick="selectAll('policyType')">Select All</button>
+        <button onclick="selectNone('policyType')">Clear All</button>
+      </div>
+      <div class="checkbox-grid" id="policyTypeCheckboxes"></div>
+    </div>
+
+    <button class="config-apply" onclick="applyFilters()">Apply Filters</button>
+  </div>
+
+  <!-- Main Dashboard -->
+  <div class="app-container">
+    <div class="file-area">
+      <label onclick="document.getElementById('csvFile').click()">&#128194; Load CSV Report</label>
+      <input type="file" id="csvFile" accept=".csv" onchange="handleFile(event)">
+      <div class="file-name" id="fileName">No file loaded – using sample data</div>
+    </div>
+
+    <div style="height: 16px;"></div>
+
+    <div class="dashboard">
+      <div class="dashboard-top">
+        <div class="title" id="dashTitle">March Race to the Finish</div>
+        <div class="subtitle">Remaining to Goal</div>
+        <div class="remaining-amount" id="remainingAmt">$0</div>
+        <div class="sold-info">
+          <span id="soldAmt">$0</span> sold of <span id="goalAmt">$78,000</span> goal
+        </div>
+
+        <div class="pct-circle">
+          <svg viewBox="0 0 72 72">
+            <circle class="track" cx="36" cy="36" r="30" />
+            <circle class="fill" id="pctArc" cx="36" cy="36" r="30"
+              stroke-dasharray="188.5" stroke-dashoffset="188.5" />
+          </svg>
+          <div class="pct-label" id="pctLabel">0%</div>
+        </div>
+      </div>
+
+      <div class="deadline-bar">
+        <div class="deadline-left">
+          <div class="cal-icon">&#128197;</div>
+          <div>
+            <div class="deadline-label">Deadline</div>
+            <div class="deadline-date" id="deadlineDisplay">March 18, 2026</div>
+          </div>
+        </div>
+        <div class="days-left">
+          <div class="num" id="daysLeft">0</div>
+          <div class="label">Days Left</div>
+        </div>
+      </div>
+
+      <div class="progress-section">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="salesCount">0</div>
+          <div class="stat-label">Sales</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalSold">$0</div>
+          <div class="stat-label">Sold</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="avgPremium">$0</div>
+          <div class="stat-label">Avg Premium</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ── State ──
+let allRows = [];
+let filters = {
+  carrier: new Set(),
+  producer: new Set(),
+  leadSource: new Set(),
+  policyType: new Set()
+};
+let allValues = {
+  carrier: [],
+  producer: [],
+  leadSource: [],
+  policyType: []
+};
+
+// Default carriers to include
+const DEFAULT_CARRIERS = ['Farmers', 'Foremost'];
+
+// ── CSV Parser (handles quoted fields with commas) ──
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const fields = [];
+    let current = '';
+    let inQuotes = false;
+    const line = lines[i];
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (j + 1 < line.length && line[j + 1] === '"') {
+            current += '"';
+            j++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    fields.push(current.trim());
+
+    if (fields.length >= 9) {
+      const premiumStr = fields[6].replace(/[$,]/g, '');
+      const premium = parseFloat(premiumStr) || 0;
+      rows.push({
+        policyNum: fields[0],
+        carrier: fields[1],
+        customer: fields[2],
+        soldDate: fields[3],
+        effectiveDate: fields[4],
+        policyType: fields[5],
+        premium: premium,
+        producer: fields[7],
+        leadSource: fields[8],
+        zipCode: fields[9] || ''
+      });
+    }
+  }
+  return rows;
+}
+
+// ── Extract unique sorted values ──
+function extractValues(rows) {
+  const sets = { carrier: new Set(), producer: new Set(), leadSource: new Set(), policyType: new Set() };
+  rows.forEach(r => {
+    sets.carrier.add(r.carrier);
+    sets.producer.add(r.producer);
+    sets.leadSource.add(r.leadSource);
+    sets.policyType.add(r.policyType);
+  });
+  allValues.carrier = [...sets.carrier].sort();
+  allValues.producer = [...sets.producer].sort();
+  allValues.leadSource = [...sets.leadSource].sort();
+  allValues.policyType = [...sets.policyType].sort();
+}
+
+// ── Build checkboxes ──
+function buildCheckboxes() {
+  ['carrier', 'producer', 'leadSource', 'policyType'].forEach(key => {
+    const container = document.getElementById(key + 'Checkboxes');
+    container.innerHTML = '';
+    allValues[key].forEach(val => {
+      const label = document.createElement('label');
+      label.className = 'checkbox-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = filters[key].has(val);
+      cb.dataset.filterKey = key;
+      cb.dataset.filterVal = val;
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(val));
+      container.appendChild(label);
+    });
+  });
+}
+
+function selectAll(key) {
+  document.querySelectorAll(`input[data-filter-key="${key}"]`).forEach(cb => cb.checked = true);
+}
+function selectNone(key) {
+  document.querySelectorAll(`input[data-filter-key="${key}"]`).forEach(cb => cb.checked = false);
+}
+
+function readCheckboxes() {
+  ['carrier', 'producer', 'leadSource', 'policyType'].forEach(key => {
+    filters[key] = new Set();
+    document.querySelectorAll(`input[data-filter-key="${key}"]:checked`).forEach(cb => {
+      filters[key].add(cb.dataset.filterVal);
+    });
+  });
+}
+
+// ── Apply filters & update dashboard ──
+function applyFilters() {
+  readCheckboxes();
+  updateDashboard();
+  toggleConfig();
+}
+
+function updateDashboard() {
+  const goal = parseFloat(document.getElementById('goalInput').value) || 78000;
+  const deadlineStr = document.getElementById('deadlineInput').value;
+  const titleStr = document.getElementById('titleInput').value;
+  const deadline = new Date(deadlineStr + 'T23:59:59');
+
+  // Filter rows
+  const filtered = allRows.filter(r => {
+    if (filters.carrier.size > 0 && !filters.carrier.has(r.carrier)) return false;
+    if (filters.producer.size > 0 && !filters.producer.has(r.producer)) return false;
+    if (filters.leadSource.size > 0 && !filters.leadSource.has(r.leadSource)) return false;
+    if (filters.policyType.size > 0 && !filters.policyType.has(r.policyType)) return false;
+    return true;
+  });
+
+  const salesCount = filtered.length;
+  const totalSold = filtered.reduce((s, r) => s + r.premium, 0);
+  const avgPremium = salesCount > 0 ? totalSold / salesCount : 0;
+  const remaining = Math.max(0, goal - totalSold);
+  const pct = Math.min(100, Math.round((totalSold / goal) * 100));
+
+  // Days left
+  const now = new Date();
+  const msLeft = deadline - now;
+  const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+
+  // Update DOM
+  document.getElementById('dashTitle').textContent = titleStr;
+  document.getElementById('remainingAmt').textContent = '$' + Math.round(remaining).toLocaleString();
+  document.getElementById('soldAmt').textContent = '$' + Math.round(totalSold).toLocaleString();
+  document.getElementById('goalAmt').textContent = '$' + Math.round(goal).toLocaleString();
+  document.getElementById('salesCount').textContent = salesCount.toLocaleString();
+  document.getElementById('totalSold').textContent = '$' + Math.round(totalSold).toLocaleString();
+  document.getElementById('avgPremium').textContent = '$' + Math.round(avgPremium).toLocaleString();
+
+  // Deadline display
+  const dlDate = new Date(deadlineStr + 'T00:00:00');
+  document.getElementById('deadlineDisplay').textContent = dlDate.toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric'
+  });
+  document.getElementById('daysLeft').textContent = daysLeft;
+
+  // Percentage arc
+  const circumference = 2 * Math.PI * 30; // r=30
+  const offset = circumference - (pct / 100) * circumference;
+  document.getElementById('pctArc').style.strokeDashoffset = offset;
+  document.getElementById('pctLabel').textContent = pct + '%';
+
+  // Progress bar
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+// ── Config panel toggle ──
+function toggleConfig() {
+  document.getElementById('configPanel').classList.toggle('open');
+  document.querySelector('.config-overlay').classList.toggle('open');
+}
+
+// ── File handling ──
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('fileName').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    loadData(ev.target.result);
+  };
+  reader.readAsText(file);
+}
+
+function loadData(csvText) {
+  allRows = parseCSV(csvText);
+  extractValues(allRows);
+
+  // Set default filters: Farmers & Foremost for carriers, ALL for everything else
+  filters.carrier = new Set(allValues.carrier.filter(c => DEFAULT_CARRIERS.includes(c)));
+  filters.producer = new Set(allValues.producer);
+  filters.leadSource = new Set(allValues.leadSource);
+  filters.policyType = new Set(allValues.policyType);
+
+  buildCheckboxes();
+  updateDashboard();
+}
+
+// ── Load sample data on startup ──
+async function loadSample() {
+  try {
+    const resp = await fetch('SampleFiles/report - 2026-03-17T145741.538.csv');
+    if (!resp.ok) throw new Error('not found');
+    const text = await resp.text();
+    loadData(text);
+  } catch {
+    // If fetch fails (file:// protocol), embed nothing – user can load manually
+    document.getElementById('fileName').textContent = 'Click above to load a CSV file';
+  }
+}
+
+loadSample();
+</script>
+</body>
+</html>
