@@ -550,8 +550,8 @@
   <div class="app-container">
     <div class="file-area">
       <label onclick="document.getElementById('csvFile').click()">&#128194; Load CSV Report</label>
-      <input type="file" id="csvFile" accept=".csv" onchange="handleFile(event)">
-      <div class="file-name" id="fileName">No file loaded – using sample data</div>
+      <input type="file" id="csvFile" accept=".csv">
+      <div class="file-name" id="fileName">No file loaded – click above to load a CSV report</div>
     </div>
 
     <div style="height: 16px;"></div>
@@ -805,8 +805,8 @@ function toggleConfig() {
 }
 
 // ── File handling ──
-function handleFile(e) {
-  const file = e.target.files[0];
+document.getElementById('csvFile').addEventListener('change', function() {
+  const file = this.files[0];
   if (!file) return;
   document.getElementById('fileName').textContent = file.name;
   const reader = new FileReader();
@@ -814,7 +814,7 @@ function handleFile(e) {
     loadData(ev.target.result);
   };
   reader.readAsText(file);
-}
+});
 
 function loadData(csvText) {
   allRows = parseCSV(csvText);
@@ -830,20 +830,8 @@ function loadData(csvText) {
   updateDashboard();
 }
 
-// ── Load sample data on startup ──
-async function loadSample() {
-  try {
-    const resp = await fetch('SampleFiles/report - 2026-03-17T145741.538.csv');
-    if (!resp.ok) throw new Error('not found');
-    const text = await resp.text();
-    loadData(text);
-  } catch {
-    // If fetch fails (file:// protocol), embed nothing – user can load manually
-    document.getElementById('fileName').textContent = 'Click above to load a CSV file';
-  }
-}
-
-loadSample();
+// ── Start with empty dashboard ──
+updateDashboard();
 </script>
 </body>
 </html>
