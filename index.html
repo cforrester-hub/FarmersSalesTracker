@@ -880,22 +880,46 @@ function renderDailyChart(rows) {
     }
   });
 
-  const sortedDays = Object.keys(dailyTotals).sort((a, b) => new Date(a) - new Date(b));
-  if (sortedDays.length === 0) {
+  const saleDates = Object.keys(dailyTotals).map(d => new Date(d));
+  if (saleDates.length === 0) {
     chartContainer.style.display = 'none';
     return;
   }
 
-  chartContainer.style.display = 'block';
-  const maxVal = Math.max(...sortedDays.map(d => dailyTotals[d]));
+  // Build full date range from first sale to deadline (or last sale, whichever is later)
+  const deadlineStr = document.getElementById('deadlineInput').value;
+  const deadlineDate = new Date(deadlineStr + 'T00:00:00');
+  const minDate = new Date(Math.min(...saleDates));
+  const maxDate = new Date(Math.max(...saleDates, deadlineDate));
 
-  barsContainer.innerHTML = sortedDays.map(day => {
-    const val = dailyTotals[day];
-    const heightPct = maxVal > 0 ? (val / maxVal) * 100 : 0;
-    const d = new Date(day + 'T00:00:00');
-    const label = (d.getMonth() + 1) + '/' + d.getDate();
+  const allDays = [];
+  for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate() + 1)) {
+    allDays.push(new Date(d));
+  }
+
+  // Map each day to its total by matching against the parsed date keys
+  const dayData = allDays.map(day => {
+    let total = 0;
+    for (const [key, val] of Object.entries(dailyTotals)) {
+      const keyDate = new Date(key);
+      if (keyDate.getFullYear() === day.getFullYear() &&
+          keyDate.getMonth() === day.getMonth() &&
+          keyDate.getDate() === day.getDate()) {
+        total = val;
+        break;
+      }
+    }
+    return { date: day, total };
+  });
+
+  chartContainer.style.display = 'block';
+  const maxVal = Math.max(...dayData.map(d => d.total));
+
+  barsContainer.innerHTML = dayData.map(({ date, total }) => {
+    const heightPct = maxVal > 0 ? (total / maxVal) * 100 : 0;
+    const label = (date.getMonth() + 1) + '/' + date.getDate();
     return `<div class="chart-bar-group">
-      <div class="chart-bar-amount">$${Math.round(val).toLocaleString()}</div>
+      <div class="chart-bar-amount">${total > 0 ? '$' + Math.round(total).toLocaleString() : ''}</div>
       <div class="chart-bar" style="height:${heightPct}%"></div>
       <div class="chart-bar-label">${label}</div>
     </div>`;
