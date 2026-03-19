@@ -551,7 +551,7 @@
       <h3>Goal &amp; Deadline</h3>
       <div class="goal-input-group">
         <label>Goal $</label>
-        <input type="number" id="goalInput" value="78000" step="1000">
+        <input type="number" id="goalInput" value="80000" step="1000">
       </div>
       <div class="goal-input-group" style="margin-top:8px">
         <label>Deadline</label>
@@ -559,7 +559,7 @@
       </div>
       <div class="goal-input-group" style="margin-top:8px">
         <label>Title</label>
-        <input type="text" id="titleInput" value="March Race to the Finish" style="background:var(--bg-card);border:1px solid var(--accent-blue);color:var(--text-primary);padding:8px 12px;border-radius:8px;font-family:'Source Sans 3',sans-serif;font-size:14px;width:100%;">
+        <input type="text" id="titleInput" value="RACE TO THE FINISH" style="background:var(--bg-card);border:1px solid var(--accent-blue);color:var(--text-primary);padding:8px 12px;border-radius:8px;font-family:'Source Sans 3',sans-serif;font-size:14px;width:100%;">
       </div>
     </div>
 
@@ -808,7 +808,7 @@ function applyFilters() {
 }
 
 function updateDashboard() {
-  const goal = parseFloat(document.getElementById('goalInput').value) || 78000;
+  const goal = parseFloat(document.getElementById('goalInput').value) || 80000;
   const deadlineStr = document.getElementById('deadlineInput').value;
   const titleStr = document.getElementById('titleInput').value;
   const deadline = new Date(deadlineStr + 'T23:59:59');
@@ -926,6 +926,34 @@ function renderDailyChart(rows) {
   }).join('');
 }
 
+// ── Session storage for config ──
+const CONFIG_KEY = 'salesTrackerConfig';
+
+function saveConfig() {
+  const config = {
+    goal: document.getElementById('goalInput').value,
+    deadline: document.getElementById('deadlineInput').value,
+    title: document.getElementById('titleInput').value
+  };
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+}
+
+function restoreConfig() {
+  const saved = localStorage.getItem(CONFIG_KEY);
+  if (!saved) return;
+  try {
+    const config = JSON.parse(saved);
+    if (config.goal) document.getElementById('goalInput').value = config.goal;
+    if (config.deadline) document.getElementById('deadlineInput').value = config.deadline;
+    if (config.title) document.getElementById('titleInput').value = config.title;
+  } catch (e) { /* ignore corrupt data */ }
+}
+
+// Save config whenever inputs change
+['goalInput', 'deadlineInput', 'titleInput'].forEach(id => {
+  document.getElementById(id).addEventListener('input', saveConfig);
+});
+
 // ── Config panel toggle ──
 function toggleConfig() {
   document.getElementById('configPanel').classList.toggle('open');
@@ -959,6 +987,7 @@ function loadData(csvText) {
 }
 
 // ── Start with empty dashboard ──
+restoreConfig();
 updateDashboard();
 </script>
 </body>

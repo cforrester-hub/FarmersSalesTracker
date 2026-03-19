@@ -8,7 +8,7 @@ A single-page web dashboard for tracking insurance policy sales progress toward 
 - **No frameworks or libraries** — vanilla HTML/JS/CSS only. No React, no jQuery, no bundlers.
 - **No build tools** — no npm, webpack, or compilation. The HTML file is served directly.
 - **No backend** — everything is client-side. No server, no API calls, no database.
-- **No data persistence** — data is loaded fresh from CSV each session (no localStorage).
+- **No backend persistence** — CSV data is loaded fresh each session. Configuration (goal, deadline, title) is persisted via sessionStorage.
 
 ## Code Conventions
 - CSS uses custom properties (variables) for theming, defined in `:root`
