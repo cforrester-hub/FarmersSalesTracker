@@ -38,7 +38,7 @@
 
     .app-container {
       width: 100%;
-      max-width: 680px;
+      max-width: 900px;
     }
 
     /* Config Toggle Button */
@@ -404,6 +404,33 @@
       border-radius: 0 5px 5px 0;
     }
 
+    /* Pace Indicator */
+    .pace-indicator {
+      padding: 0 24px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .pace-indicator .pace-icon {
+      font-size: 16px;
+    }
+    .pace-indicator.ahead {
+      color: #4caf50;
+    }
+    .pace-indicator.behind {
+      color: var(--danger);
+    }
+    .pace-indicator.on-track {
+      color: var(--gold);
+    }
+    .pace-indicator.no-data {
+      color: var(--text-secondary);
+    }
+
     /* Stats Row */
     .stats-row {
       display: grid;
@@ -651,6 +678,11 @@
         </div>
       </div>
 
+      <div class="pace-indicator no-data" id="paceIndicator">
+        <span class="pace-icon" id="paceIcon"></span>
+        <span id="paceText"></span>
+      </div>
+
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-value" id="salesCount">0</div>
@@ -857,6 +889,45 @@ function updateDashboard() {
 
   // Progress bar
   document.getElementById('progressBar').style.width = pct + '%';
+
+  // Pace indicator
+  const paceEl = document.getElementById('paceIndicator');
+  const paceIcon = document.getElementById('paceIcon');
+  const paceText = document.getElementById('paceText');
+
+  if (allRows.length === 0) {
+    paceEl.className = 'pace-indicator no-data';
+    paceIcon.textContent = '';
+    paceText.textContent = '';
+  } else {
+    // Calculate expected pace based on elapsed time vs total campaign duration
+    const allSaleDates = allRows.map(r => new Date(r.soldDate)).filter(d => !isNaN(d));
+    const firstSale = allSaleDates.length > 0 ? new Date(Math.min(...allSaleDates)) : now;
+    const totalDuration = deadline - firstSale;
+    const elapsed = now - firstSale;
+    const elapsedPct = totalDuration > 0 ? Math.min(1, elapsed / totalDuration) : 1;
+    const expectedSold = goal * elapsedPct;
+    const diff = totalSold - expectedSold;
+    const diffFormatted = '$' + Math.abs(Math.round(diff)).toLocaleString();
+
+    if (now > deadline) {
+      paceEl.className = 'pace-indicator ' + (totalSold >= goal ? 'ahead' : 'behind');
+      paceIcon.textContent = totalSold >= goal ? '\u2714' : '\u2718';
+      paceText.textContent = totalSold >= goal ? 'Goal reached!' : 'Deadline passed \u2014 ' + diffFormatted + ' short of goal';
+    } else if (Math.abs(diff) < goal * 0.02) {
+      paceEl.className = 'pace-indicator on-track';
+      paceIcon.textContent = '\u25C9';
+      paceText.textContent = 'On track \u2014 keeping pace with goal';
+    } else if (diff > 0) {
+      paceEl.className = 'pace-indicator ahead';
+      paceIcon.textContent = '\u25B2';
+      paceText.textContent = 'Ahead of schedule by ' + diffFormatted;
+    } else {
+      paceEl.className = 'pace-indicator behind';
+      paceIcon.textContent = '\u25BC';
+      paceText.textContent = 'Behind schedule by ' + diffFormatted;
+    }
+  }
 
   // Daily sales chart
   renderDailyChart(filtered);
