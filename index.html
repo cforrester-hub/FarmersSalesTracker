@@ -1759,10 +1759,10 @@ async function exportGif() {
     // Build frame plan
     const FPS = 12;
     const FRAME_DELAY = Math.round(1000 / FPS);
-    const INTRO_FRAMES = 6;       // 0.5s
-    const COUNTUP_FRAMES = 18;    // 1.5s
-    const CELEBRATION_FRAMES = finalExceeded ? 18 : 0; // 1.5s if exceeded
-    const HOLD_FRAMES = finalExceeded ? 72 : 84; // 6s / 7s → ~10s total
+    const INTRO_FRAMES = 6;
+    const COUNTUP_FRAMES = 18;
+    const CELEBRATION_FRAMES = finalExceeded ? 18 : 0;
+    const HOLD_FRAMES = 24;
     const CELEBRATION_START = INTRO_FRAMES + COUNTUP_FRAMES;
 
     const frames = [];
@@ -1784,10 +1784,9 @@ async function exportGif() {
     // fast file.
     const CAPTURE_SCALE = 1;
 
-    // ── Step 1: render the FINAL state first to learn the content height.
-    // Then compute a 16:9 output canvas that the content fits inside,
-    // centered. Teams displays 16:9 GIFs at a much larger thumbnail than
-    // square or portrait-aspect GIFs.
+    // ── Step 1: render the FINAL state first to learn the reference
+    // dimensions that every frame will be normalized to. This kills the
+    // subtle frame-to-frame size jitter that caused the previous flicker.
     applyFrame(1, 'hold', frames.length - 1, CELEBRATION_START);
     await new Promise(r => requestAnimationFrame(r));
     const refCanvas = await html2canvas(host, {
@@ -1796,46 +1795,36 @@ async function exportGif() {
       useCORS: true,
       logging: false
     });
-    const contentW = refCanvas.width;
-    const contentH = refCanvas.height;
+    const refWidth = refCanvas.width;
+    const refHeight = refCanvas.height;
 
-    // Force 16:9: take the larger dimension as the driver.
-    // If content is tall, width = contentH * 16/9. If wide, height = contentW * 9/16.
-    let gifW, gifH;
-    if (contentW / contentH >= 16 / 9) {
-      // Content is already wider than 16:9
-      gifW = contentW;
-      gifH = Math.round(contentW * 9 / 16);
-    } else {
-      // Content is taller than 16:9 — widen the frame
-      gifH = contentH;
-      gifW = Math.round(contentH * 16 / 9);
-    }
-
-    // ── Step 2: kick off the GIF encoder with the 16:9 dimensions
+    // ── Step 2: kick off the GIF encoder with reference dimensions
     const workerUrl = await getGifWorkerUrl();
     const gif = new GIF({
       workers: 2,
       quality: 10,
-      width: gifW,
-      height: gifH,
+      width: refWidth,
+      height: refHeight,
       workerScript: workerUrl
     });
 
-    // ── Step 3: helper that draws a captured frame centered on a 16:9
-    // canvas with a dark background that matches the capture host.
-    function frameToGif(srcCanvas) {
-      const out = document.createElement('canvas');
-      out.width = gifW;
-      out.height = gifH;
-      const ctx = out.getContext('2d');
+    // ── Step 3: helper that normalizes any captured canvas to the
+    // reference dimensions by drawing it top-left onto a blank canvas.
+    function normalizeCanvas(srcCanvas) {
+      if (srcCanvas.width === refWidth && srcCanvas.height === refHeight) {
+        return srcCanvas;
+      }
+      const fixed = document.createElement('canvas');
+      fixed.width = refWidth;
+      fixed.height = refHeight;
+      const ctx = fixed.getContext('2d');
+      // Match the gif-capture-host background so padding stays seamless
       ctx.fillStyle = '#132448';
-      ctx.fillRect(0, 0, gifW, gifH);
-      // Center the content
-      const offsetX = Math.round((gifW - srcCanvas.width) / 2);
-      const offsetY = Math.round((gifH - srcCanvas.height) / 2);
-      ctx.drawImage(srcCanvas, offsetX, offsetY);
-      return out;
+      ctx.fillRect(0, 0, refWidth, refHeight);
+      const drawW = Math.min(srcCanvas.width, refWidth);
+      const drawH = Math.min(srcCanvas.height, refHeight);
+      ctx.drawImage(srcCanvas, 0, 0, drawW, drawH, 0, 0, drawW, drawH);
+      return fixed;
     }
 
     // ── Step 4: capture each frame and feed into the encoder
@@ -1848,7 +1837,7 @@ async function exportGif() {
         useCORS: true,
         logging: false
       });
-      const canvas = frameToGif(raw);
+      const canvas = normalizeCanvas(raw);
       gif.addFrame(canvas, { delay: FRAME_DELAY, copy: true });
       progressFill.style.width = (40 * (i + 1) / frames.length) + '%';
     }
