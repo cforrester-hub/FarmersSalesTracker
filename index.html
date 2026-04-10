@@ -1092,6 +1092,7 @@
       <div class="file-buttons">
         <label onclick="document.getElementById('csvFile').click()">&#128194; Load CSV Report</label>
         <input type="file" id="csvFile" accept=".csv">
+        <button class="gif-btn" id="clipBtn" onclick="copyToClipboard()" title="Copy dashboard screenshot to clipboard for pasting into Teams">&#128203; Copy to Clipboard</button>
         <button class="gif-btn" id="gifBtn" onclick="exportGif()" title="Export animated GIF to share in Teams">&#128229; Share as GIF</button>
       </div>
       <div class="file-name" id="fileName">No file loaded – click above to load a CSV report</div>
@@ -1479,6 +1480,47 @@ async function getGifWorkerUrl() {
   const blob = new Blob([code], { type: 'application/javascript' });
   _gifWorkerBlobUrl = URL.createObjectURL(blob);
   return _gifWorkerBlobUrl;
+}
+
+// ── Clipboard Screenshot ──
+async function copyToClipboard() {
+  if (typeof html2canvas === 'undefined') {
+    alert('html2canvas library did not load. Check your internet connection and reload.');
+    return;
+  }
+  if (allRows.length === 0) return;
+
+  const btn = document.getElementById('clipBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '\u231B Capturing\u2026';
+
+  try {
+    const dash = document.getElementById('dashboard');
+    const canvas = await html2canvas(dash, {
+      backgroundColor: '#0b1628',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+    const blobPromise = new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const blob = await blobPromise;
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': blob })
+    ]);
+    btn.textContent = '\u2705 Copied!';
+    setTimeout(() => {
+      btn.textContent = origText;
+      btn.disabled = false;
+    }, 2000);
+  } catch (err) {
+    console.error('Clipboard copy failed', err);
+    btn.textContent = '\u274C Failed';
+    setTimeout(() => {
+      btn.textContent = origText;
+      btn.disabled = false;
+    }, 2000);
+  }
 }
 
 async function exportGif() {
@@ -1967,6 +2009,7 @@ function loadData(csvText) {
   confettiFiredForCurrentData = false;
 
   // Reveal the GIF export button now that data is loaded
+  document.getElementById('clipBtn').classList.add('visible');
   const gifBtn = document.getElementById('gifBtn');
   if (gifBtn) gifBtn.classList.add('visible');
 
