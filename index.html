@@ -1602,6 +1602,13 @@ async function exportGif() {
     for (let i = 0; i < CELEBRATION_FRAMES; i++) frames.push({ ratio: 1, phase: 'celebration' });
     for (let i = 0; i < HOLD_FRAMES; i++) frames.push({ ratio: 1, phase: 'hold' });
 
+    // Capture at 2x DPI so the exported GIF is ~1440px wide instead of
+    // ~720px. Teams uses the GIF's intrinsic dimensions to size the
+    // in-chat thumbnail, so larger source pixels = larger default preview
+    // and sharper text. Bump this to 3 for an even larger GIF at the cost
+    // of ~2x file size and capture time.
+    const CAPTURE_SCALE = 2;
+
     // ── Step 1: render the FINAL state first to learn the reference
     // dimensions that every frame will be normalized to. This kills the
     // subtle frame-to-frame size jitter that caused the previous flicker.
@@ -1609,7 +1616,7 @@ async function exportGif() {
     await new Promise(r => requestAnimationFrame(r));
     const refCanvas = await html2canvas(host, {
       backgroundColor: null,
-      scale: 1,
+      scale: CAPTURE_SCALE,
       useCORS: true,
       logging: false
     });
@@ -1651,7 +1658,7 @@ async function exportGif() {
       await new Promise(r => requestAnimationFrame(r));
       const raw = await html2canvas(host, {
         backgroundColor: null,
-        scale: 1,
+        scale: CAPTURE_SCALE,
         useCORS: true,
         logging: false
       });
