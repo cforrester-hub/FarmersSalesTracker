@@ -897,6 +897,115 @@
       z-index: 60;
     }
 
+    /* Content is sized up substantially for the GIF because Teams caps
+       GIF thumbnails at a fixed display size — the only way to make the
+       numbers readable in a Teams post is to make them physically larger
+       within the frame. */
+    .dashboard.gif-mode .dashboard-top {
+      padding: 36px 36px 24px;
+    }
+    .dashboard.gif-mode .title {
+      font-size: 22px;
+      letter-spacing: 4px;
+    }
+    .dashboard.gif-mode .subtitle {
+      font-size: 16px;
+      letter-spacing: 2.5px;
+    }
+    .dashboard.gif-mode .remaining-amount {
+      font-size: 100px;
+      line-height: 0.95;
+    }
+    .dashboard.gif-mode .sold-info {
+      font-size: 18px;
+      margin-top: 4px;
+    }
+    .dashboard.gif-mode .goal-badge {
+      font-size: 18px;
+      padding: 8px 18px;
+      margin-top: 14px;
+      min-height: 38px;
+    }
+    .dashboard.gif-mode .pct-circle,
+    .dashboard.gif-mode .pct-circle svg {
+      width: 104px;
+      height: 104px;
+    }
+    .dashboard.gif-mode .pct-label {
+      font-size: 28px;
+    }
+    .dashboard.gif-mode .deadline-bar {
+      padding: 22px 28px;
+      margin: 0 32px;
+    }
+    .dashboard.gif-mode .cal-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 24px;
+    }
+    .dashboard.gif-mode .deadline-label {
+      font-size: 13px;
+    }
+    .dashboard.gif-mode .deadline-date {
+      font-size: 20px;
+    }
+    .dashboard.gif-mode .days-left .num {
+      font-size: 52px;
+    }
+    .dashboard.gif-mode .days-left .label {
+      font-size: 13px;
+    }
+    .dashboard.gif-mode .progress-section {
+      padding: 26px 32px 10px;
+    }
+    .dashboard.gif-mode .progress-track {
+      height: 14px;
+    }
+    .dashboard.gif-mode .progress-track.exceeded {
+      height: 22px;
+    }
+    .dashboard.gif-mode .pace-indicator {
+      padding: 0 32px;
+      margin-top: 14px;
+      font-size: 17px;
+      min-height: 28px;
+    }
+    .dashboard.gif-mode .pace-indicator .pace-icon {
+      font-size: 20px;
+    }
+    .dashboard.gif-mode .stats-row {
+      padding: 26px 32px 30px;
+      gap: 16px;
+    }
+    .dashboard.gif-mode .stat-card {
+      padding: 24px 16px;
+    }
+    .dashboard.gif-mode .stat-value {
+      font-size: 42px;
+    }
+    .dashboard.gif-mode .stat-label {
+      font-size: 13px;
+      letter-spacing: 2.5px;
+      margin-top: 6px;
+    }
+    .dashboard.gif-mode .daily-chart {
+      padding: 22px 32px 28px;
+    }
+    .dashboard.gif-mode .daily-chart-title {
+      font-size: 15px;
+      margin-bottom: 14px;
+    }
+    .dashboard.gif-mode .chart-bars {
+      height: 120px;
+      padding-bottom: 28px;
+    }
+    .dashboard.gif-mode .chart-bar-amount {
+      font-size: 11px;
+    }
+    .dashboard.gif-mode .chart-bar-label {
+      font-size: 11px;
+    }
+
     /* Responsive */
     @media (max-width: 500px) {
       .remaining-amount { font-size: 48px; }
@@ -1602,12 +1711,14 @@ async function exportGif() {
     for (let i = 0; i < CELEBRATION_FRAMES; i++) frames.push({ ratio: 1, phase: 'celebration' });
     for (let i = 0; i < HOLD_FRAMES; i++) frames.push({ ratio: 1, phase: 'hold' });
 
-    // Capture at 2x DPI so the exported GIF is ~1440px wide instead of
-    // ~720px. Teams uses the GIF's intrinsic dimensions to size the
-    // in-chat thumbnail, so larger source pixels = larger default preview
-    // and sharper text. Bump this to 3 for an even larger GIF at the cost
-    // of ~2x file size and capture time.
-    const CAPTURE_SCALE = 2;
+    // Teams caps GIF thumbnails at a fixed display size regardless of the
+    // source resolution, so upscaling via html2canvas does not actually
+    // help — it just makes a larger file that Teams shrinks back down.
+    // Instead, readability comes from making the CONTENT bigger inside
+    // the frame (see the `gif-mode` CSS rules that bump hero text, stats,
+    // and the percent circle). CAPTURE_SCALE is kept at 1 for a small,
+    // fast file.
+    const CAPTURE_SCALE = 1;
 
     // ── Step 1: render the FINAL state first to learn the reference
     // dimensions that every frame will be normalized to. This kills the
