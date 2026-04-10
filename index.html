@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Farmers Sales Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -549,6 +551,288 @@
       white-space: nowrap;
     }
 
+    /* ── Goal Crushed Celebration ── */
+    :root {
+      --celebrate-green: #4ade80;
+      --celebrate-green-bright: #22ff88;
+      --celebrate-green-dim: #16a34a;
+    }
+
+    /* Dashboard ambient glow when goal is exceeded */
+    .dashboard.exceeded {
+      position: relative;
+      animation: fadeInUp 0.6s ease-out, celebrateBorderGlow 3.5s ease-in-out infinite;
+    }
+    @keyframes celebrateBorderGlow {
+      0%, 100% {
+        box-shadow:
+          0 4px 24px rgba(0,0,0,0.4),
+          0 0 40px rgba(240, 165, 0, 0.35),
+          0 0 80px rgba(74, 222, 128, 0.15);
+      }
+      50% {
+        box-shadow:
+          0 4px 24px rgba(0,0,0,0.4),
+          0 0 60px rgba(74, 222, 128, 0.45),
+          0 0 120px rgba(240, 165, 0, 0.25);
+      }
+    }
+
+    /* Hero area when exceeded */
+    .dashboard.exceeded .remaining-amount {
+      color: var(--celebrate-green);
+      text-shadow: 0 0 24px rgba(74, 222, 128, 0.4);
+    }
+    .dashboard.exceeded .subtitle {
+      color: var(--celebrate-green);
+      font-weight: 700;
+    }
+    .dashboard.exceeded .title::before {
+      content: '\2728  ';
+    }
+    .dashboard.exceeded .title::after {
+      content: '  \2728';
+    }
+
+    /* Goal-crushed badge */
+    .goal-badge {
+      display: none;
+      margin-top: 10px;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, var(--celebrate-green-dim) 0%, var(--celebrate-green) 100%);
+      border-radius: 999px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0b1628;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+      width: fit-content;
+      animation: badgePop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .dashboard.exceeded .goal-badge {
+      display: block;
+    }
+    @keyframes badgePop {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* Percentage circle glow when exceeded */
+    .dashboard.exceeded .pct-circle {
+      animation: pctPulse 2s ease-in-out infinite;
+    }
+    .dashboard.exceeded .pct-circle .fill {
+      stroke: var(--celebrate-green);
+      filter: drop-shadow(0 0 6px rgba(74, 222, 128, 0.8));
+    }
+    .dashboard.exceeded .pct-label {
+      color: var(--celebrate-green);
+    }
+    @keyframes pctPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    /* Progress bar overflow treatment */
+    .progress-track.exceeded {
+      height: 16px;
+      border-radius: 8px;
+      box-shadow: 0 0 24px rgba(74, 222, 128, 0.35);
+      overflow: visible;
+    }
+    .progress-track.exceeded .progress-fill {
+      border-radius: 8px 0 0 8px;
+      background: linear-gradient(90deg, var(--gold) 0%, #ff8c00 60%, var(--gold-light) 100%);
+    }
+    .progress-track .goal-tick {
+      display: none;
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      background: var(--gold-light);
+      box-shadow: 0 0 6px var(--gold-light);
+      z-index: 2;
+    }
+    .progress-track.exceeded .goal-tick {
+      display: block;
+    }
+    .progress-overflow {
+      display: none;
+      position: absolute;
+      top: 0;
+      height: 100%;
+      border-radius: 0 8px 8px 0;
+      background: linear-gradient(
+        90deg,
+        var(--gold-light) 0%,
+        var(--celebrate-green) 50%,
+        var(--celebrate-green-bright) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmerSweep 2s linear infinite;
+      box-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
+    }
+    .progress-track.exceeded .progress-overflow {
+      display: block;
+    }
+    @keyframes shimmerSweep {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Pace indicator exceeded state */
+    .pace-indicator.exceeded {
+      color: var(--celebrate-green);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    /* Confetti */
+    .confetti-container {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 50;
+    }
+    .confetti-piece {
+      position: absolute;
+      top: -20px;
+      width: 10px;
+      height: 14px;
+      opacity: 0;
+      animation: confettiFall 3s ease-in forwards;
+    }
+    @keyframes confettiFall {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px) rotate(0deg);
+      }
+      10% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(120vh) rotate(720deg);
+      }
+    }
+
+    /* File area — make it a flex row so the GIF button can sit next to CSV loader */
+    .file-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .file-area .file-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .file-area .gif-btn {
+      display: none;
+      padding: 8px 20px;
+      background: var(--accent-blue);
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Source Sans 3', sans-serif;
+    }
+    .file-area .gif-btn:hover:not(:disabled) {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+    .file-area .gif-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .file-area .gif-btn.visible {
+      display: inline-block;
+    }
+
+    /* GIF rendering overlay */
+    .gif-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 22, 40, 0.92);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .gif-overlay.visible {
+      display: flex;
+    }
+    .gif-overlay-box {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 32px 40px;
+      text-align: center;
+      border: 1px solid var(--accent-blue);
+      max-width: 400px;
+    }
+    .gif-overlay-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 20px;
+      color: var(--gold);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .gif-overlay-msg {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .gif-progress-track {
+      height: 8px;
+      background: var(--bg-deep);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .gif-progress-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--celebrate-green) 100%);
+      transition: width 0.2s;
+    }
+    .gif-overlay-dismiss {
+      display: none;
+      margin-top: 16px;
+      padding: 10px 24px;
+      background: var(--gold);
+      border: none;
+      border-radius: 6px;
+      color: var(--bg-deep);
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+    }
+    .gif-overlay.error .gif-overlay-dismiss { display: inline-block; }
+    .gif-overlay.error .gif-progress-track { display: none; }
+    .gif-overlay.error .gif-overlay-title { color: var(--danger); }
+
+    /* Off-screen dashboard clone used for GIF capture */
+    .gif-capture-host {
+      position: fixed;
+      top: 0;
+      left: -10000px;
+      width: 720px;
+      background: var(--bg-deep);
+      padding: 20px;
+      pointer-events: none;
+    }
+
     /* Responsive */
     @media (max-width: 500px) {
       .remaining-amount { font-size: 48px; }
@@ -632,21 +916,26 @@
   <!-- Main Dashboard -->
   <div class="app-container">
     <div class="file-area">
-      <label onclick="document.getElementById('csvFile').click()">&#128194; Load CSV Report</label>
-      <input type="file" id="csvFile" accept=".csv">
+      <div class="file-buttons">
+        <label onclick="document.getElementById('csvFile').click()">&#128194; Load CSV Report</label>
+        <input type="file" id="csvFile" accept=".csv">
+        <button class="gif-btn" id="gifBtn" onclick="exportGif()" title="Export animated GIF to share in Teams">&#128229; Share as GIF</button>
+      </div>
       <div class="file-name" id="fileName">No file loaded – click above to load a CSV report</div>
     </div>
 
     <div style="height: 16px;"></div>
 
-    <div class="dashboard">
+    <div class="dashboard" id="dashboard">
+      <div class="confetti-container" id="confettiContainer"></div>
       <div class="dashboard-top">
         <div class="title" id="dashTitle">March Race to the Finish</div>
-        <div class="subtitle">Remaining to Goal</div>
+        <div class="subtitle" id="dashSubtitle">Remaining to Goal</div>
         <div class="remaining-amount" id="remainingAmt">$0</div>
         <div class="sold-info">
           <span id="soldAmt">$0</span> sold of <span id="goalAmt">$78,000</span> goal
         </div>
+        <div class="goal-badge" id="goalBadge">100% &mdash; $0 Over</div>
 
         <div class="pct-circle">
           <svg viewBox="0 0 72 72">
@@ -673,8 +962,10 @@
       </div>
 
       <div class="progress-section">
-        <div class="progress-track">
+        <div class="progress-track" id="progressTrack">
           <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+          <div class="progress-overflow" id="progressOverflow" style="left: 0; width: 0"></div>
+          <div class="goal-tick" id="goalTick" style="left: 0"></div>
         </div>
       </div>
 
@@ -705,6 +996,21 @@
     </div>
   </div>
 
+  <!-- GIF Rendering Overlay -->
+  <div class="gif-overlay" id="gifOverlay">
+    <div class="gif-overlay-box">
+      <div class="gif-overlay-title" id="gifOverlayTitle">Rendering GIF&hellip;</div>
+      <div class="gif-overlay-msg" id="gifOverlayMsg">Capturing frames, this takes a few seconds.</div>
+      <div class="gif-progress-track">
+        <div class="gif-progress-fill" id="gifProgressFill"></div>
+      </div>
+      <button class="gif-overlay-dismiss" onclick="hideGifOverlay()">Dismiss</button>
+    </div>
+  </div>
+
+  <!-- Off-screen host for GIF frame capture -->
+  <div class="gif-capture-host" id="gifCaptureHost"></div>
+
 <script>
 // ── State ──
 let allRows = [];
@@ -723,6 +1029,9 @@ let allValues = {
 
 // Default carriers to include
 const DEFAULT_CARRIERS = ['Farmers', 'Foremost'];
+
+// Celebration state — tracks whether confetti has already played for the current CSV load
+let confettiFiredForCurrentData = false;
 
 // ── CSV Parser (handles quoted fields with commas) ──
 function parseCSV(text) {
@@ -858,16 +1167,34 @@ function updateDashboard() {
   const totalSold = filtered.reduce((s, r) => s + r.premium, 0);
   const avgPremium = salesCount > 0 ? totalSold / salesCount : 0;
   const remaining = Math.max(0, goal - totalSold);
-  const pct = Math.min(100, Math.round((totalSold / goal) * 100));
+  const exceeded = goal > 0 && totalSold >= goal;
+  const overage = Math.max(0, totalSold - goal);
+  const exactPct = goal > 0 ? (totalSold / goal) * 100 : 0;
+  const pct = exceeded ? Math.round(exactPct) : Math.min(100, Math.round(exactPct));
 
   // Days left
   const now = new Date();
   const msLeft = deadline - now;
   const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
 
-  // Update DOM
+  // Update DOM — celebration swaps what the hero number means
   document.getElementById('dashTitle').textContent = titleStr;
-  document.getElementById('remainingAmt').textContent = '$' + Math.round(remaining).toLocaleString();
+  const dashboardEl = document.getElementById('dashboard');
+  const subtitleEl = document.getElementById('dashSubtitle');
+  const remainingEl = document.getElementById('remainingAmt');
+  const badgeEl = document.getElementById('goalBadge');
+
+  if (exceeded) {
+    dashboardEl.classList.add('exceeded');
+    subtitleEl.textContent = '\u{1F3C6} Goal Crushed \u2014 Bonus';
+    remainingEl.textContent = '+$' + Math.round(overage).toLocaleString();
+    badgeEl.textContent = pct + '% \u2014 $' + Math.round(overage).toLocaleString() + ' Over';
+  } else {
+    dashboardEl.classList.remove('exceeded');
+    subtitleEl.textContent = 'Remaining to Goal';
+    remainingEl.textContent = '$' + Math.round(remaining).toLocaleString();
+  }
+
   document.getElementById('soldAmt').textContent = '$' + Math.round(totalSold).toLocaleString();
   document.getElementById('goalAmt').textContent = '$' + Math.round(goal).toLocaleString();
   document.getElementById('salesCount').textContent = salesCount.toLocaleString();
@@ -881,14 +1208,36 @@ function updateDashboard() {
   });
   document.getElementById('daysLeft').textContent = daysLeft;
 
-  // Percentage arc
+  // Percentage arc — caps the visual arc at 100% but label shows real %
   const circumference = 2 * Math.PI * 30; // r=30
-  const offset = circumference - (pct / 100) * circumference;
+  const arcPct = Math.min(100, exactPct);
+  const offset = circumference - (arcPct / 100) * circumference;
   document.getElementById('pctArc').style.strokeDashoffset = offset;
   document.getElementById('pctLabel').textContent = pct + '%';
 
-  // Progress bar
-  document.getElementById('progressBar').style.width = pct + '%';
+  // Progress bar — when exceeded, bar fills to the goal-tick position
+  // and an overflow segment extends past it. Visual cap at 150% so the
+  // overflow segment is always visible but bounded.
+  const trackEl = document.getElementById('progressTrack');
+  const barEl = document.getElementById('progressBar');
+  const overflowEl = document.getElementById('progressOverflow');
+  const tickEl = document.getElementById('goalTick');
+
+  if (exceeded) {
+    trackEl.classList.add('exceeded');
+    const visualMax = Math.min(150, exactPct); // visual cap
+    const goalTickLeftPct = (100 / visualMax) * 100; // where 100% sits on the widened scale
+    const overflowWidthPct = 100 - goalTickLeftPct;
+    barEl.style.width = goalTickLeftPct + '%';
+    overflowEl.style.left = goalTickLeftPct + '%';
+    overflowEl.style.width = overflowWidthPct + '%';
+    tickEl.style.left = goalTickLeftPct + '%';
+  } else {
+    trackEl.classList.remove('exceeded');
+    barEl.style.width = pct + '%';
+    overflowEl.style.width = '0';
+    overflowEl.style.left = '0';
+  }
 
   // Pace indicator
   const paceEl = document.getElementById('paceIndicator');
@@ -899,6 +1248,11 @@ function updateDashboard() {
     paceEl.className = 'pace-indicator no-data';
     paceIcon.textContent = '';
     paceText.textContent = '';
+  } else if (exceeded) {
+    paceEl.className = 'pace-indicator exceeded';
+    paceIcon.textContent = '\u{1F389}';
+    paceText.textContent = 'Goal exceeded by $' + Math.round(overage).toLocaleString()
+      + ' (' + pct + '%) \u2014 keep going!';
   } else {
     // Calculate expected pace based on elapsed time vs total campaign duration
     const allSaleDates = allRows.map(r => new Date(r.soldDate)).filter(d => !isNaN(d));
@@ -911,9 +1265,9 @@ function updateDashboard() {
     const diffFormatted = '$' + Math.abs(Math.round(diff)).toLocaleString();
 
     if (now > deadline) {
-      paceEl.className = 'pace-indicator ' + (totalSold >= goal ? 'ahead' : 'behind');
-      paceIcon.textContent = totalSold >= goal ? '\u2714' : '\u2718';
-      paceText.textContent = totalSold >= goal ? 'Goal reached!' : 'Deadline passed \u2014 ' + diffFormatted + ' short of goal';
+      paceEl.className = 'pace-indicator behind';
+      paceIcon.textContent = '\u2718';
+      paceText.textContent = 'Deadline passed \u2014 ' + diffFormatted + ' short of goal';
     } else if (Math.abs(diff) < goal * 0.02) {
       paceEl.className = 'pace-indicator on-track';
       paceIcon.textContent = '\u25C9';
@@ -929,8 +1283,286 @@ function updateDashboard() {
     }
   }
 
+  // Fire confetti once per CSV load when the goal is exceeded
+  if (exceeded && allRows.length > 0 && !confettiFiredForCurrentData) {
+    fireConfetti();
+    confettiFiredForCurrentData = true;
+  }
+
   // Daily sales chart
   renderDailyChart(filtered);
+}
+
+// ── GIF Export ──
+// gif.js needs a Worker. Loading the worker script directly from a CDN fails
+// when the page origin is `null` (file://) or sandboxed. Workaround: fetch the
+// worker source ourselves and serve it from a same-origin Blob URL.
+let _gifWorkerBlobUrl = null;
+async function getGifWorkerUrl() {
+  if (_gifWorkerBlobUrl) return _gifWorkerBlobUrl;
+  const resp = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
+  if (!resp.ok) throw new Error('Failed to load gif.worker.js (' + resp.status + ')');
+  const code = await resp.text();
+  const blob = new Blob([code], { type: 'application/javascript' });
+  _gifWorkerBlobUrl = URL.createObjectURL(blob);
+  return _gifWorkerBlobUrl;
+}
+
+async function exportGif() {
+  if (typeof html2canvas === 'undefined' || typeof GIF === 'undefined') {
+    showGifError('GIF libraries did not load. Check your internet connection and reload.');
+    return;
+  }
+  if (allRows.length === 0) return;
+
+  const overlay = document.getElementById('gifOverlay');
+  const progressFill = document.getElementById('gifProgressFill');
+  const titleEl = document.getElementById('gifOverlayTitle');
+  const msgEl = document.getElementById('gifOverlayMsg');
+  titleEl.textContent = 'Rendering GIF\u2026';
+  msgEl.textContent = 'Capturing frames\u2026';
+  overlay.classList.remove('error');
+  overlay.classList.add('visible');
+  progressFill.style.width = '0%';
+
+  const host = document.getElementById('gifCaptureHost');
+  host.textContent = '';
+
+  try {
+    // Compute final values from the currently-filtered dataset
+    const goal = parseFloat(document.getElementById('goalInput').value) || 80000;
+    const filtered = allRows.filter(r => {
+      if (filters.carrier.size > 0 && !filters.carrier.has(r.carrier)) return false;
+      if (filters.producer.size > 0 && !filters.producer.has(r.producer)) return false;
+      if (filters.leadSource.size > 0 && !filters.leadSource.has(r.leadSource)) return false;
+      if (filters.policyType.size > 0 && !filters.policyType.has(r.policyType)) return false;
+      return true;
+    });
+    const finalSalesCount = filtered.length;
+    const finalTotalSold = filtered.reduce((s, r) => s + r.premium, 0);
+    const finalExceeded = goal > 0 && finalTotalSold >= goal;
+
+    // Snapshot of the live pace indicator, used when not exceeded
+    const livePaceEl = document.getElementById('paceIndicator');
+    const livePaceClass = livePaceEl.className;
+    const livePaceIcon = document.getElementById('paceIcon').textContent;
+    const livePaceText = document.getElementById('paceText').textContent;
+
+    // Clone the live dashboard and mount it into the off-screen host
+    const liveDash = document.getElementById('dashboard');
+    const clone = liveDash.cloneNode(true);
+    clone.style.width = '680px';
+    clone.style.margin = '0 auto';
+    clone.classList.remove('exceeded');
+    // Remove any live confetti pieces from the clone
+    const cloneConfetti = clone.querySelector('#confettiContainer');
+    if (cloneConfetti) cloneConfetti.textContent = '';
+    host.appendChild(clone);
+
+    // Scoped references inside the clone (querySelector scopes to the subtree)
+    const cSubtitle = clone.querySelector('#dashSubtitle');
+    const cRemaining = clone.querySelector('#remainingAmt');
+    const cSold = clone.querySelector('#soldAmt');
+    const cGoal = clone.querySelector('#goalAmt');
+    const cSalesCount = clone.querySelector('#salesCount');
+    const cTotalSold = clone.querySelector('#totalSold');
+    const cAvgPremium = clone.querySelector('#avgPremium');
+    const cBadge = clone.querySelector('#goalBadge');
+    const cProgressTrack = clone.querySelector('#progressTrack');
+    const cProgressBar = clone.querySelector('#progressBar');
+    const cProgressOverflow = clone.querySelector('#progressOverflow');
+    const cGoalTick = clone.querySelector('#goalTick');
+    const cPctArc = clone.querySelector('#pctArc');
+    const cPctLabel = clone.querySelector('#pctLabel');
+    const cPaceEl = clone.querySelector('#paceIndicator');
+    const cPaceIcon = clone.querySelector('#paceIcon');
+    const cPaceText = clone.querySelector('#paceText');
+
+    // Apply an interpolated state to the clone for a single frame
+    function applyFrame(ratio, phase) {
+      const salesCount = Math.round(finalSalesCount * ratio);
+      const totalSold = finalTotalSold * ratio;
+      const avgPremium = salesCount > 0 ? totalSold / salesCount : 0;
+      const exactPct = goal > 0 ? (totalSold / goal) * 100 : 0;
+      const exceeded = goal > 0 && totalSold >= goal;
+      const remaining = Math.max(0, goal - totalSold);
+      const overage = Math.max(0, totalSold - goal);
+      const pct = exceeded ? Math.round(exactPct) : Math.min(100, Math.round(exactPct));
+
+      cSalesCount.textContent = salesCount.toLocaleString();
+      cTotalSold.textContent = '$' + Math.round(totalSold).toLocaleString();
+      cAvgPremium.textContent = '$' + Math.round(avgPremium).toLocaleString();
+      cSold.textContent = '$' + Math.round(totalSold).toLocaleString();
+      cGoal.textContent = '$' + Math.round(goal).toLocaleString();
+
+      if (exceeded) {
+        clone.classList.add('exceeded');
+        cSubtitle.textContent = '\u{1F3C6} Goal Crushed \u2014 Bonus';
+        cRemaining.textContent = '+$' + Math.round(overage).toLocaleString();
+        cBadge.textContent = pct + '% \u2014 $' + Math.round(overage).toLocaleString() + ' Over';
+      } else {
+        clone.classList.remove('exceeded');
+        cSubtitle.textContent = 'Remaining to Goal';
+        cRemaining.textContent = '$' + Math.round(remaining).toLocaleString();
+      }
+
+      // Percentage arc
+      const circumference = 2 * Math.PI * 30;
+      const arcPct = Math.min(100, exactPct);
+      cPctArc.style.strokeDashoffset = String(circumference - (arcPct / 100) * circumference);
+      cPctLabel.textContent = pct + '%';
+
+      // Progress bar
+      if (exceeded) {
+        cProgressTrack.classList.add('exceeded');
+        const visualMax = Math.min(150, exactPct);
+        const tickLeft = (100 / visualMax) * 100;
+        const overflowWidth = 100 - tickLeft;
+        cProgressBar.style.width = tickLeft + '%';
+        cProgressOverflow.style.left = tickLeft + '%';
+        cProgressOverflow.style.width = overflowWidth + '%';
+        cGoalTick.style.left = tickLeft + '%';
+      } else {
+        cProgressTrack.classList.remove('exceeded');
+        cProgressBar.style.width = pct + '%';
+        cProgressOverflow.style.width = '0';
+        cProgressOverflow.style.left = '0';
+      }
+
+      // Pace indicator — hidden during intro/countup, shown in celebration/hold
+      if (phase === 'intro' || phase === 'countup') {
+        cPaceEl.className = 'pace-indicator no-data';
+        cPaceIcon.textContent = '';
+        cPaceText.textContent = '';
+      } else if (exceeded) {
+        cPaceEl.className = 'pace-indicator exceeded';
+        cPaceIcon.textContent = '\u{1F389}';
+        cPaceText.textContent = 'Goal exceeded by $' + Math.round(overage).toLocaleString()
+          + ' (' + pct + '%) \u2014 keep going!';
+      } else {
+        cPaceEl.className = livePaceClass;
+        cPaceIcon.textContent = livePaceIcon;
+        cPaceText.textContent = livePaceText;
+      }
+    }
+
+    // Build frame plan
+    const FPS = 12;
+    const FRAME_DELAY = Math.round(1000 / FPS);
+    const frames = [];
+    // Intro (empty, 0.5s)
+    for (let i = 0; i < 6; i++) frames.push({ ratio: 0, phase: 'intro' });
+    // Count-up (1.5s, ease-out cubic)
+    for (let i = 1; i <= 18; i++) {
+      const t = i / 18;
+      const eased = 1 - Math.pow(1 - t, 3);
+      frames.push({ ratio: eased, phase: 'countup' });
+    }
+    // Celebration hold (only if exceeded)
+    if (finalExceeded) {
+      for (let i = 0; i < 18; i++) frames.push({ ratio: 1, phase: 'celebration' });
+    }
+    // Hold (2s — data readable)
+    for (let i = 0; i < 24; i++) frames.push({ ratio: 1, phase: 'hold' });
+
+    // Capture frame 0 to learn dimensions
+    applyFrame(frames[0].ratio, frames[0].phase);
+    await new Promise(r => requestAnimationFrame(r));
+    const firstCanvas = await html2canvas(host, {
+      backgroundColor: '#0b1628',
+      scale: 1,
+      useCORS: true,
+      logging: false
+    });
+
+    const workerUrl = await getGifWorkerUrl();
+    const gif = new GIF({
+      workers: 2,
+      quality: 10,
+      width: firstCanvas.width,
+      height: firstCanvas.height,
+      workerScript: workerUrl
+    });
+    gif.addFrame(firstCanvas, { delay: FRAME_DELAY, copy: true });
+    progressFill.style.width = (30 * 1 / frames.length) + '%';
+
+    // Capture remaining frames
+    for (let i = 1; i < frames.length; i++) {
+      applyFrame(frames[i].ratio, frames[i].phase);
+      await new Promise(r => requestAnimationFrame(r));
+      const canvas = await html2canvas(host, {
+        backgroundColor: '#0b1628',
+        scale: 1,
+        useCORS: true,
+        logging: false
+      });
+      gif.addFrame(canvas, { delay: FRAME_DELAY, copy: true });
+      progressFill.style.width = (30 * (i + 1) / frames.length) + '%';
+    }
+
+    msgEl.textContent = 'Encoding GIF\u2026';
+
+    gif.on('progress', function(p) {
+      progressFill.style.width = (30 + 70 * p) + '%';
+    });
+    gif.on('finished', function(blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      a.download = 'sales-report-' + today + '.gif';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      host.textContent = '';
+      hideGifOverlay();
+    });
+    gif.render();
+  } catch (err) {
+    console.error('GIF export failed', err);
+    host.textContent = '';
+    showGifError('Something went wrong: ' + (err && err.message ? err.message : err));
+  }
+}
+
+function hideGifOverlay() {
+  const overlay = document.getElementById('gifOverlay');
+  overlay.classList.remove('visible');
+  overlay.classList.remove('error');
+}
+
+function showGifError(message) {
+  const overlay = document.getElementById('gifOverlay');
+  overlay.classList.add('visible', 'error');
+  document.getElementById('gifOverlayTitle').textContent = 'Render Failed';
+  document.getElementById('gifOverlayMsg').textContent = message;
+}
+
+// ── Confetti ──
+function fireConfetti() {
+  const container = document.getElementById('confettiContainer');
+  if (!container) return;
+  const colors = ['#f0a500', '#ffc947', '#4ade80', '#22ff88', '#e84545', '#ffffff', '#1e90ff'];
+  const count = 60;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < count; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDelay = (Math.random() * 0.8) + 's';
+    piece.style.animationDuration = (2.5 + Math.random() * 1.5) + 's';
+    piece.style.transform = 'rotate(' + Math.floor(Math.random() * 360) + 'deg)';
+    if (Math.random() < 0.4) {
+      piece.style.width = '6px';
+      piece.style.height = '10px';
+      piece.style.borderRadius = '50%';
+    }
+    frag.appendChild(piece);
+    setTimeout(() => piece.remove(), 4500);
+  }
+  container.appendChild(frag);
 }
 
 function renderDailyChart(rows) {
@@ -1052,6 +1684,13 @@ function loadData(csvText) {
   filters.producer = new Set(allValues.producer);
   filters.leadSource = new Set(allValues.leadSource);
   filters.policyType = new Set(allValues.policyType);
+
+  // Reset celebration state for the new dataset so confetti fires once
+  confettiFiredForCurrentData = false;
+
+  // Reveal the GIF export button now that data is loaded
+  const gifBtn = document.getElementById('gifBtn');
+  if (gifBtn) gifBtn.classList.add('visible');
 
   buildCheckboxes();
   updateDashboard();
