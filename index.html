@@ -1497,12 +1497,29 @@ async function copyToClipboard() {
 
   try {
     const dash = document.getElementById('dashboard');
+
+    // Temporarily apply gif-mode to freeze all CSS animations and use
+    // static colors. This prevents html2canvas from capturing mid-frame
+    // animation artifacts (shimmering gradient, pulsing glow, confetti).
+    dash.classList.add('gif-mode');
+    // Hide live confetti pieces — they're random CSS-animated divs that
+    // html2canvas captures at arbitrary positions.
+    const confettiEl = document.getElementById('confettiContainer');
+    if (confettiEl) confettiEl.style.display = 'none';
+    // Give the browser a frame to apply the frozen styles
+    await new Promise(r => requestAnimationFrame(r));
+
     const canvas = await html2canvas(dash, {
       backgroundColor: '#0b1628',
       scale: 2,
       useCORS: true,
       logging: false
     });
+
+    // Restore live dashboard immediately after capture
+    dash.classList.remove('gif-mode');
+    if (confettiEl) confettiEl.style.display = '';
+
     const blobPromise = new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const blob = await blobPromise;
     await navigator.clipboard.write([
@@ -1515,6 +1532,11 @@ async function copyToClipboard() {
     }, 2000);
   } catch (err) {
     console.error('Clipboard copy failed', err);
+    // Make sure we restore the dashboard even on error
+    const dash = document.getElementById('dashboard');
+    dash.classList.remove('gif-mode');
+    const confettiEl = document.getElementById('confettiContainer');
+    if (confettiEl) confettiEl.style.display = '';
     btn.textContent = '\u274C Failed';
     setTimeout(() => {
       btn.textContent = origText;
