@@ -1759,10 +1759,10 @@ async function exportGif() {
     // Build frame plan
     const FPS = 12;
     const FRAME_DELAY = Math.round(1000 / FPS);
-    const INTRO_FRAMES = 6;
-    const COUNTUP_FRAMES = 18;
-    const CELEBRATION_FRAMES = finalExceeded ? 18 : 0;
-    const HOLD_FRAMES = 24;
+    const INTRO_FRAMES = 6;       // 0.5s
+    const COUNTUP_FRAMES = 18;    // 1.5s
+    const CELEBRATION_FRAMES = finalExceeded ? 18 : 0; // 1.5s if exceeded
+    const HOLD_FRAMES = finalExceeded ? 72 : 84; // ~6-7s hold for readability
     const CELEBRATION_START = INTRO_FRAMES + COUNTUP_FRAMES;
 
     const frames = [];
