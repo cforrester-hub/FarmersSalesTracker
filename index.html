@@ -828,9 +828,73 @@
       top: 0;
       left: -10000px;
       width: 720px;
-      background: var(--bg-deep);
-      padding: 20px;
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(64, 110, 180, 0.55) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 20%, rgba(240, 165, 0, 0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 90%, rgba(74, 222, 128, 0.12) 0%, transparent 55%),
+        #132448;
+      padding: 36px 28px;
       pointer-events: none;
+    }
+
+    /* GIF capture mode — stabilizes layout so every frame is the same
+       pixel dimensions, disables animations (we drive motion in JS), and
+       brightens the card for a more readable Teams post. */
+    .dashboard.gif-mode,
+    .dashboard.gif-mode *,
+    .dashboard.gif-mode *::before,
+    .dashboard.gif-mode *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+    .dashboard.gif-mode {
+      background: #1a2847;
+      box-shadow:
+        0 6px 28px rgba(0,0,0,0.55),
+        0 0 60px rgba(240, 165, 0, 0.08) !important;
+    }
+    .dashboard.gif-mode.exceeded {
+      box-shadow:
+        0 6px 28px rgba(0,0,0,0.55),
+        0 0 60px rgba(74, 222, 128, 0.45),
+        0 0 120px rgba(240, 165, 0, 0.25) !important;
+    }
+    .dashboard.gif-mode .remaining-amount,
+    .dashboard.gif-mode .stat-value,
+    .dashboard.gif-mode .pct-label,
+    .dashboard.gif-mode .days-left .num,
+    .dashboard.gif-mode .sold-info,
+    .dashboard.gif-mode .goal-badge {
+      font-variant-numeric: tabular-nums;
+    }
+    /* Reserve vertical space for elements that appear conditionally so
+       the clone's total height never changes between frames. */
+    .dashboard.gif-mode .goal-badge {
+      display: block;
+      visibility: hidden;
+    }
+    .dashboard.gif-mode.exceeded .goal-badge {
+      visibility: visible;
+    }
+    .dashboard.gif-mode .pace-indicator {
+      min-height: 22px;
+    }
+    .dashboard.gif-mode .pace-indicator.no-data {
+      visibility: hidden;
+    }
+    /* Static exceeded styling (animations are disabled) */
+    .dashboard.gif-mode.exceeded .pct-circle {
+      transform: scale(1.06);
+    }
+    /* Keep the overflow bar a flat color instead of a shimmering gradient */
+    .dashboard.gif-mode .progress-overflow {
+      background: linear-gradient(90deg, var(--gold-light) 0%, var(--celebrate-green-bright) 100%);
+      background-size: 100% 100%;
+    }
+    /* In GIF mode the confetti container must not clip, so pieces can
+       spread across the whole card area. */
+    .dashboard.gif-mode .confetti-container {
+      z-index: 60;
     }
 
     /* Responsive */
@@ -1348,18 +1412,20 @@ async function exportGif() {
     const livePaceIcon = document.getElementById('paceIcon').textContent;
     const livePaceText = document.getElementById('paceText').textContent;
 
-    // Clone the live dashboard and mount it into the off-screen host
+    // Clone the live dashboard and mount it into the off-screen host.
+    // The clone gets `gif-mode` so animations freeze, layout is stable,
+    // and the card background is lighter for a more legible GIF.
     const liveDash = document.getElementById('dashboard');
     const clone = liveDash.cloneNode(true);
     clone.style.width = '680px';
     clone.style.margin = '0 auto';
     clone.classList.remove('exceeded');
-    // Remove any live confetti pieces from the clone
+    clone.classList.add('gif-mode');
     const cloneConfetti = clone.querySelector('#confettiContainer');
     if (cloneConfetti) cloneConfetti.textContent = '';
     host.appendChild(clone);
 
-    // Scoped references inside the clone (querySelector scopes to the subtree)
+    // Scoped references inside the clone
     const cSubtitle = clone.querySelector('#dashSubtitle');
     const cRemaining = clone.querySelector('#remainingAmt');
     const cSold = clone.querySelector('#soldAmt');
@@ -1377,9 +1443,42 @@ async function exportGif() {
     const cPaceEl = clone.querySelector('#paceIndicator');
     const cPaceIcon = clone.querySelector('#paceIcon');
     const cPaceText = clone.querySelector('#paceText');
+    const cConfettiContainer = clone.querySelector('#confettiContainer');
+
+    // Always-rendered badge text so the reserved space matches the final
+    // content exactly (prevents width shifts inside the card).
+    if (finalExceeded) {
+      const finalOver = Math.max(0, finalTotalSold - goal);
+      const finalPct = Math.round((finalTotalSold / goal) * 100);
+      cBadge.textContent = finalPct + '% \u2014 $' + Math.round(finalOver).toLocaleString() + ' Over';
+    } else {
+      cBadge.textContent = '\u00A0'; // keep height reserved
+    }
+
+    // Pre-seed confetti pieces once. Each piece has deterministic physics
+    // so we can position it per frame without relying on CSS animations.
+    const confettiColors = ['#f0a500', '#ffc947', '#4ade80', '#22ff88', '#e84545', '#ffffff', '#7cc5ff'];
+    const PIECE_COUNT = 45;
+    const confettiPieces = [];
+    for (let i = 0; i < PIECE_COUNT; i++) {
+      confettiPieces.push({
+        startX: Math.random() * 100,
+        color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+        spawnFrame: Math.floor(Math.random() * 8),
+        lifeFrames: 30 + Math.floor(Math.random() * 14),
+        startRotation: Math.random() * 360,
+        rotationDir: Math.random() < 0.5 ? 1 : -1,
+        rotationSpeed: 360 + Math.random() * 540,
+        drift: (Math.random() - 0.5) * 80,
+        isCircle: Math.random() < 0.35,
+        width: 6 + Math.floor(Math.random() * 6),
+        height: 10 + Math.floor(Math.random() * 6),
+        fallPx: 380 + Math.random() * 120
+      });
+    }
 
     // Apply an interpolated state to the clone for a single frame
-    function applyFrame(ratio, phase) {
+    function applyFrame(ratio, phase, frameIndex, celebrationStartFrame) {
       const salesCount = Math.round(finalSalesCount * ratio);
       const totalSold = finalTotalSold * ratio;
       const avgPremium = salesCount > 0 ? totalSold / salesCount : 0;
@@ -1399,7 +1498,6 @@ async function exportGif() {
         clone.classList.add('exceeded');
         cSubtitle.textContent = '\u{1F3C6} Goal Crushed \u2014 Bonus';
         cRemaining.textContent = '+$' + Math.round(overage).toLocaleString();
-        cBadge.textContent = pct + '% \u2014 $' + Math.round(overage).toLocaleString() + ' Over';
       } else {
         clone.classList.remove('exceeded');
         cSubtitle.textContent = 'Remaining to Goal';
@@ -1412,10 +1510,15 @@ async function exportGif() {
       cPctArc.style.strokeDashoffset = String(circumference - (arcPct / 100) * circumference);
       cPctLabel.textContent = pct + '%';
 
-      // Progress bar
-      if (exceeded) {
+      // Progress bar — always on the widened track in exceeded mode so the
+      // clone's height is stable across all frames.
+      if (finalExceeded) {
         cProgressTrack.classList.add('exceeded');
-        const visualMax = Math.min(150, exactPct);
+      } else {
+        cProgressTrack.classList.remove('exceeded');
+      }
+      if (exceeded) {
+        const visualMax = Math.min(150, Math.max(100.01, exactPct));
         const tickLeft = (100 / visualMax) * 100;
         const overflowWidth = 100 - tickLeft;
         cProgressBar.style.width = tickLeft + '%';
@@ -1423,13 +1526,14 @@ async function exportGif() {
         cProgressOverflow.style.width = overflowWidth + '%';
         cGoalTick.style.left = tickLeft + '%';
       } else {
-        cProgressTrack.classList.remove('exceeded');
-        cProgressBar.style.width = pct + '%';
+        cProgressBar.style.width = Math.min(100, exactPct) + '%';
         cProgressOverflow.style.width = '0';
         cProgressOverflow.style.left = '0';
+        cGoalTick.style.left = '100%';
       }
 
-      // Pace indicator — hidden during intro/countup, shown in celebration/hold
+      // Pace indicator — hidden during intro/countup, shown in celebration/hold.
+      // In gif-mode, `no-data` reserves space via CSS so the card doesn't jump.
       if (phase === 'intro' || phase === 'countup') {
         cPaceEl.className = 'pace-indicator no-data';
         cPaceIcon.textContent = '';
@@ -1444,66 +1548,122 @@ async function exportGif() {
         cPaceIcon.textContent = livePaceIcon;
         cPaceText.textContent = livePaceText;
       }
+
+      // Confetti — deterministic per-frame positioning during celebration
+      // and hold phases, so the GIF shows a real confetti fall.
+      cConfettiContainer.textContent = '';
+      if (finalExceeded && (phase === 'celebration' || phase === 'hold')) {
+        const relFrame = frameIndex - celebrationStartFrame;
+        confettiPieces.forEach(p => {
+          const elapsed = relFrame - p.spawnFrame;
+          if (elapsed < 0) return;
+          const t = elapsed / p.lifeFrames;
+          if (t > 1) return;
+          const piece = document.createElement('div');
+          piece.className = 'confetti-piece';
+          piece.style.position = 'absolute';
+          piece.style.left = p.startX + '%';
+          piece.style.top = '0';
+          piece.style.width = p.width + 'px';
+          piece.style.height = p.height + 'px';
+          piece.style.background = p.color;
+          piece.style.borderRadius = p.isCircle ? '50%' : '1px';
+          piece.style.animation = 'none';
+          const y = t * p.fallPx;
+          const x = t * p.drift;
+          const rot = p.startRotation + p.rotationDir * p.rotationSpeed * t;
+          piece.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + rot + 'deg)';
+          // Fade in quickly at birth, fade out at the end
+          let opacity = 1;
+          if (t < 0.08) opacity = t / 0.08;
+          else if (t > 0.85) opacity = Math.max(0, (1 - t) / 0.15);
+          piece.style.opacity = String(opacity);
+          cConfettiContainer.appendChild(piece);
+        });
+      }
     }
 
     // Build frame plan
     const FPS = 12;
     const FRAME_DELAY = Math.round(1000 / FPS);
+    const INTRO_FRAMES = 6;
+    const COUNTUP_FRAMES = 18;
+    const CELEBRATION_FRAMES = finalExceeded ? 18 : 0;
+    const HOLD_FRAMES = 24;
+    const CELEBRATION_START = INTRO_FRAMES + COUNTUP_FRAMES;
+
     const frames = [];
-    // Intro (empty, 0.5s)
-    for (let i = 0; i < 6; i++) frames.push({ ratio: 0, phase: 'intro' });
-    // Count-up (1.5s, ease-out cubic)
-    for (let i = 1; i <= 18; i++) {
-      const t = i / 18;
+    for (let i = 0; i < INTRO_FRAMES; i++) frames.push({ ratio: 0, phase: 'intro' });
+    for (let i = 1; i <= COUNTUP_FRAMES; i++) {
+      const t = i / COUNTUP_FRAMES;
       const eased = 1 - Math.pow(1 - t, 3);
       frames.push({ ratio: eased, phase: 'countup' });
     }
-    // Celebration hold (only if exceeded)
-    if (finalExceeded) {
-      for (let i = 0; i < 18; i++) frames.push({ ratio: 1, phase: 'celebration' });
-    }
-    // Hold (2s — data readable)
-    for (let i = 0; i < 24; i++) frames.push({ ratio: 1, phase: 'hold' });
+    for (let i = 0; i < CELEBRATION_FRAMES; i++) frames.push({ ratio: 1, phase: 'celebration' });
+    for (let i = 0; i < HOLD_FRAMES; i++) frames.push({ ratio: 1, phase: 'hold' });
 
-    // Capture frame 0 to learn dimensions
-    applyFrame(frames[0].ratio, frames[0].phase);
+    // ── Step 1: render the FINAL state first to learn the reference
+    // dimensions that every frame will be normalized to. This kills the
+    // subtle frame-to-frame size jitter that caused the previous flicker.
+    applyFrame(1, 'hold', frames.length - 1, CELEBRATION_START);
     await new Promise(r => requestAnimationFrame(r));
-    const firstCanvas = await html2canvas(host, {
-      backgroundColor: '#0b1628',
+    const refCanvas = await html2canvas(host, {
+      backgroundColor: null,
       scale: 1,
       useCORS: true,
       logging: false
     });
+    const refWidth = refCanvas.width;
+    const refHeight = refCanvas.height;
 
+    // ── Step 2: kick off the GIF encoder with reference dimensions
     const workerUrl = await getGifWorkerUrl();
     const gif = new GIF({
       workers: 2,
       quality: 10,
-      width: firstCanvas.width,
-      height: firstCanvas.height,
+      width: refWidth,
+      height: refHeight,
       workerScript: workerUrl
     });
-    gif.addFrame(firstCanvas, { delay: FRAME_DELAY, copy: true });
-    progressFill.style.width = (30 * 1 / frames.length) + '%';
 
-    // Capture remaining frames
-    for (let i = 1; i < frames.length; i++) {
-      applyFrame(frames[i].ratio, frames[i].phase);
+    // ── Step 3: helper that normalizes any captured canvas to the
+    // reference dimensions by drawing it top-left onto a blank canvas.
+    function normalizeCanvas(srcCanvas) {
+      if (srcCanvas.width === refWidth && srcCanvas.height === refHeight) {
+        return srcCanvas;
+      }
+      const fixed = document.createElement('canvas');
+      fixed.width = refWidth;
+      fixed.height = refHeight;
+      const ctx = fixed.getContext('2d');
+      // Match the gif-capture-host background so padding stays seamless
+      ctx.fillStyle = '#132448';
+      ctx.fillRect(0, 0, refWidth, refHeight);
+      const drawW = Math.min(srcCanvas.width, refWidth);
+      const drawH = Math.min(srcCanvas.height, refHeight);
+      ctx.drawImage(srcCanvas, 0, 0, drawW, drawH, 0, 0, drawW, drawH);
+      return fixed;
+    }
+
+    // ── Step 4: capture each frame and feed into the encoder
+    for (let i = 0; i < frames.length; i++) {
+      applyFrame(frames[i].ratio, frames[i].phase, i, CELEBRATION_START);
       await new Promise(r => requestAnimationFrame(r));
-      const canvas = await html2canvas(host, {
-        backgroundColor: '#0b1628',
+      const raw = await html2canvas(host, {
+        backgroundColor: null,
         scale: 1,
         useCORS: true,
         logging: false
       });
+      const canvas = normalizeCanvas(raw);
       gif.addFrame(canvas, { delay: FRAME_DELAY, copy: true });
-      progressFill.style.width = (30 * (i + 1) / frames.length) + '%';
+      progressFill.style.width = (40 * (i + 1) / frames.length) + '%';
     }
 
     msgEl.textContent = 'Encoding GIF\u2026';
 
     gif.on('progress', function(p) {
-      progressFill.style.width = (30 + 70 * p) + '%';
+      progressFill.style.width = (40 + 60 * p) + '%';
     });
     gif.on('finished', function(blob) {
       const url = URL.createObjectURL(blob);
