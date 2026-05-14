@@ -281,6 +281,16 @@
       color: var(--text-primary);
       font-weight: 600;
     }
+    .loss-info {
+      font-size: 14px;
+      color: var(--danger);
+      font-weight: 600;
+      margin-top: 2px;
+      display: none;
+    }
+    .loss-info.visible {
+      display: block;
+    }
 
     /* Percentage Circle */
     .pct-circle {
@@ -1113,6 +1123,7 @@
         <div class="sold-info">
           <span id="soldAmt">$0</span> sold of <span id="goalAmt">$78,000</span> goal
         </div>
+        <div class="loss-info" id="lossInfo"></div>
         <div class="goal-badge" id="goalBadge">100% &mdash; $0 Over</div>
 
         <div class="pct-circle">
