@@ -930,6 +930,10 @@
       font-size: 18px;
       margin-top: 4px;
     }
+    .dashboard.gif-mode .loss-info {
+      font-size: 18px;
+      margin-top: 4px;
+    }
     .dashboard.gif-mode .goal-badge {
       font-size: 18px;
       padding: 8px 18px;
@@ -1603,7 +1607,9 @@ async function exportGif() {
     });
     const finalSalesCount = filtered.length;
     const finalTotalSold = filtered.reduce((s, r) => s + r.premium, 0);
-    const finalExceeded = goal > 0 && finalTotalSold >= goal;
+    const loss = parseFloat(document.getElementById('lossInput').value) || 0;
+    const finalAdjustedTotal = finalTotalSold - loss;
+    const finalExceeded = goal > 0 && finalAdjustedTotal >= goal;
 
     // Snapshot of the live pace indicator, used when not exceeded
     const livePaceEl = document.getElementById('paceIndicator');
@@ -1643,12 +1649,13 @@ async function exportGif() {
     const cPaceIcon = clone.querySelector('#paceIcon');
     const cPaceText = clone.querySelector('#paceText');
     const cConfettiContainer = clone.querySelector('#confettiContainer');
+    const cLossInfo = clone.querySelector('#lossInfo');
 
     // Always-rendered badge text so the reserved space matches the final
     // content exactly (prevents width shifts inside the card).
     if (finalExceeded) {
-      const finalOver = Math.max(0, finalTotalSold - goal);
-      const finalPct = Math.round((finalTotalSold / goal) * 100);
+      const finalOver = Math.max(0, finalAdjustedTotal - goal);
+      const finalPct = Math.round((finalAdjustedTotal / goal) * 100);
       cBadge.textContent = finalPct + '% \u2014 $' + Math.round(finalOver).toLocaleString() + ' Over';
     } else {
       cBadge.textContent = '\u00A0'; // keep height reserved
@@ -1680,17 +1687,19 @@ async function exportGif() {
     function applyFrame(ratio, phase, frameIndex, celebrationStartFrame) {
       const salesCount = Math.round(finalSalesCount * ratio);
       const totalSold = finalTotalSold * ratio;
+      const animatedLoss = loss * ratio;
+      const adjTotal = totalSold - animatedLoss;
       const avgPremium = salesCount > 0 ? totalSold / salesCount : 0;
-      const exactPct = goal > 0 ? (totalSold / goal) * 100 : 0;
-      const exceeded = goal > 0 && totalSold >= goal;
-      const remaining = Math.max(0, goal - totalSold);
-      const overage = Math.max(0, totalSold - goal);
+      const exactPct = goal > 0 ? (adjTotal / goal) * 100 : 0;
+      const exceeded = goal > 0 && adjTotal >= goal;
+      const remaining = Math.max(0, goal - adjTotal);
+      const overage = Math.max(0, adjTotal - goal);
       const pct = exceeded ? Math.round(exactPct) : Math.min(100, Math.round(exactPct));
 
       cSalesCount.textContent = salesCount.toLocaleString();
-      cTotalSold.textContent = '$' + Math.round(totalSold).toLocaleString();
+      cTotalSold.textContent = '$' + Math.round(adjTotal).toLocaleString();
       cAvgPremium.textContent = '$' + Math.round(avgPremium).toLocaleString();
-      cSold.textContent = '$' + Math.round(totalSold).toLocaleString();
+      cSold.textContent = '$' + Math.round(adjTotal).toLocaleString();
       cGoal.textContent = '$' + Math.round(goal).toLocaleString();
 
       if (exceeded) {
@@ -1746,6 +1755,15 @@ async function exportGif() {
         cPaceEl.className = livePaceClass;
         cPaceIcon.textContent = livePaceIcon;
         cPaceText.textContent = livePaceText;
+      }
+
+      // Loss info — shown after intro phase if a loss value is set
+      if (loss > 0 && phase !== 'intro') {
+        cLossInfo.textContent = '−$' + Math.round(animatedLoss).toLocaleString() + ' loss (cancellations)';
+        cLossInfo.classList.add('visible');
+      } else {
+        cLossInfo.textContent = '';
+        cLossInfo.classList.remove('visible');
       }
 
       // Confetti — deterministic per-frame positioning during celebration
