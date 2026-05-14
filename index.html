@@ -1341,6 +1341,7 @@ function updateDashboard() {
   const goal = parseFloat(document.getElementById('goalInput').value) || 80000;
   const deadlineStr = document.getElementById('deadlineInput').value;
   const titleStr = document.getElementById('titleInput').value;
+  const loss = parseFloat(document.getElementById('lossInput').value) || 0;
   const deadline = new Date(deadlineStr + 'T23:59:59');
 
   // Filter rows
@@ -1354,11 +1355,12 @@ function updateDashboard() {
 
   const salesCount = filtered.length;
   const totalSold = filtered.reduce((s, r) => s + r.premium, 0);
+  const adjustedTotal = totalSold - loss;
   const avgPremium = salesCount > 0 ? totalSold / salesCount : 0;
-  const remaining = Math.max(0, goal - totalSold);
-  const exceeded = goal > 0 && totalSold >= goal;
-  const overage = Math.max(0, totalSold - goal);
-  const exactPct = goal > 0 ? (totalSold / goal) * 100 : 0;
+  const remaining = Math.max(0, goal - adjustedTotal);
+  const exceeded = goal > 0 && adjustedTotal >= goal;
+  const overage = Math.max(0, adjustedTotal - goal);
+  const exactPct = goal > 0 ? (adjustedTotal / goal) * 100 : 0;
   const pct = exceeded ? Math.round(exactPct) : Math.min(100, Math.round(exactPct));
 
   // Days left
@@ -1384,11 +1386,20 @@ function updateDashboard() {
     remainingEl.textContent = '$' + Math.round(remaining).toLocaleString();
   }
 
-  document.getElementById('soldAmt').textContent = '$' + Math.round(totalSold).toLocaleString();
+  document.getElementById('soldAmt').textContent = '$' + Math.round(adjustedTotal).toLocaleString();
   document.getElementById('goalAmt').textContent = '$' + Math.round(goal).toLocaleString();
   document.getElementById('salesCount').textContent = salesCount.toLocaleString();
-  document.getElementById('totalSold').textContent = '$' + Math.round(totalSold).toLocaleString();
+  document.getElementById('totalSold').textContent = '$' + Math.round(adjustedTotal).toLocaleString();
   document.getElementById('avgPremium').textContent = '$' + Math.round(avgPremium).toLocaleString();
+
+  const lossInfoEl = document.getElementById('lossInfo');
+  if (loss > 0) {
+    lossInfoEl.textContent = '−$' + Math.round(loss).toLocaleString() + ' loss (cancellations)';
+    lossInfoEl.classList.add('visible');
+  } else {
+    lossInfoEl.textContent = '';
+    lossInfoEl.classList.remove('visible');
+  }
 
   // Deadline display
   const dlDate = new Date(deadlineStr + 'T00:00:00');
@@ -1450,7 +1461,7 @@ function updateDashboard() {
     const elapsed = now - firstSale;
     const elapsedPct = totalDuration > 0 ? Math.min(1, elapsed / totalDuration) : 1;
     const expectedSold = goal * elapsedPct;
-    const diff = totalSold - expectedSold;
+    const diff = adjustedTotal - expectedSold;
     const diffFormatted = '$' + Math.abs(Math.round(diff)).toLocaleString();
 
     if (now > deadline) {
