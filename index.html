@@ -504,6 +504,12 @@
       color: var(--text-secondary);
       margin-top: 6px;
     }
+    .file-name.error {
+      color: var(--danger);
+      font-weight: 600;
+      font-size: 13px;
+      line-height: 1.5;
+    }
 
     /* Daily Sales Chart */
     .daily-chart {
@@ -1231,61 +1237,102 @@ const DEFAULT_CARRIERS = ['Farmers', 'Foremost'];
 // Celebration state — tracks whether confetti has already played for the current CSV load
 let confettiFiredForCurrentData = false;
 
-// ── CSV Parser (handles quoted fields with commas) ──
+// ── CSV Parser (handles quoted fields with commas, column-order independent) ──
+
+// Columns the app requires to function. Keys are internal names, values are
+// accepted header variations (matched case-insensitively).
+const CSV_COLUMNS = {
+  policyNum:     ['policy #', 'policy number', 'policy num', 'policynumber'],
+  carrier:       ['carrier'],
+  customer:      ['customer', 'customer name', 'insured'],
+  soldDate:      ['sold date', 'solddate', 'sale date'],
+  effectiveDate: ['effective date', 'effectivedate', 'eff date'],
+  policyType:    ['policy type', 'policytype', 'type'],
+  premium:       ['premium'],
+  producer:      ['producer', 'agent'],
+  leadSource:    ['lead source', 'leadsource', 'lead'],
+  zipCode:       ['zip code', 'zipcode', 'zip']
+};
+const REQUIRED_COLUMNS = ['carrier', 'soldDate', 'policyType', 'premium', 'producer', 'leadSource'];
+
+function parseCSVLine(line) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+  for (let j = 0; j < line.length; j++) {
+    const ch = line[j];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (j + 1 < line.length && line[j + 1] === '"') {
+          current += '"';
+          j++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 function parseCSV(text) {
   const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return { rows: [], error: 'CSV file is empty or has no data rows.' };
+
+  // Parse header row and build column index map
+  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+  const colMap = {};
+  for (const [key, aliases] of Object.entries(CSV_COLUMNS)) {
+    const idx = headers.findIndex(h => aliases.includes(h));
+    if (idx !== -1) colMap[key] = idx;
+  }
+
+  // Check for missing required columns
+  const missing = REQUIRED_COLUMNS.filter(key => colMap[key] === undefined);
+  if (missing.length > 0) {
+    const friendlyNames = missing.map(key => {
+      // Use the first alias as the display name
+      return CSV_COLUMNS[key][0];
+    });
+    return {
+      rows: [],
+      error: 'Missing required columns: ' + friendlyNames.join(', ')
+    };
+  }
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
-    const fields = [];
-    let current = '';
-    let inQuotes = false;
-    const line = lines[i];
-    for (let j = 0; j < line.length; j++) {
-      const ch = line[j];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (j + 1 < line.length && line[j + 1] === '"') {
-            current += '"';
-            j++;
-          } else {
-            inQuotes = false;
-          }
-        } else {
-          current += ch;
-        }
-      } else {
-        if (ch === '"') {
-          inQuotes = true;
-        } else if (ch === ',') {
-          fields.push(current.trim());
-          current = '';
-        } else {
-          current += ch;
-        }
-      }
-    }
-    fields.push(current.trim());
+    const fields = parseCSVLine(lines[i]);
+    if (fields.length < 2) continue; // skip blank/malformed lines
 
-    if (fields.length >= 9) {
-      const premiumStr = fields[6].replace(/[$,]/g, '');
-      const premium = parseFloat(premiumStr) || 0;
-      rows.push({
-        policyNum: fields[0],
-        carrier: fields[1],
-        customer: fields[2],
-        soldDate: fields[3],
-        effectiveDate: fields[4],
-        policyType: fields[5],
-        premium: premium,
-        producer: fields[7],
-        leadSource: fields[8],
-        zipCode: fields[9] || ''
-      });
-    }
+    const premiumStr = (fields[colMap.premium] || '').replace(/[$,]/g, '');
+    const premium = parseFloat(premiumStr) || 0;
+    rows.push({
+      policyNum: colMap.policyNum !== undefined ? fields[colMap.policyNum] || '' : '',
+      carrier: fields[colMap.carrier] || '',
+      customer: colMap.customer !== undefined ? fields[colMap.customer] || '' : '',
+      soldDate: fields[colMap.soldDate] || '',
+      effectiveDate: colMap.effectiveDate !== undefined ? fields[colMap.effectiveDate] || '' : '',
+      policyType: fields[colMap.policyType] || '',
+      premium: premium,
+      producer: fields[colMap.producer] || '',
+      leadSource: fields[colMap.leadSource] || '',
+      zipCode: colMap.zipCode !== undefined ? fields[colMap.zipCode] || '' : ''
+    });
   }
-  return rows;
+  return { rows, error: null };
 }
 
 // ── Extract unique sorted values ──
@@ -2069,7 +2116,17 @@ document.getElementById('csvFile').addEventListener('change', function() {
 });
 
 function loadData(csvText) {
-  allRows = parseCSV(csvText);
+  const result = parseCSV(csvText);
+  const fileNameEl = document.getElementById('fileName');
+  if (result.error) {
+    allRows = [];
+    fileNameEl.textContent = '⚠ ERROR: ' + result.error;
+    fileNameEl.classList.add('error');
+    updateDashboard();
+    return;
+  }
+  fileNameEl.classList.remove('error');
+  allRows = result.rows;
   extractValues(allRows);
 
   // Set default filters: Farmers & Foremost for carriers, ALL for everything else
